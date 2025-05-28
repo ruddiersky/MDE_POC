@@ -1,6 +1,5 @@
 print('hello')
 
-
 def draw_pyramid(height: int) -> None:
     for i in range(1, height + 1):
         stars = '*' * (2 * i - 1)

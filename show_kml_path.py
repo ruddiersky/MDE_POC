@@ -1,5 +1,8 @@
 import sys
 import xml.etree.ElementTree as ET
+from typing import List
+
+import webbrowser
 
 HTML_TEMPLATE = """<!DOCTYPE html>
 <html>
@@ -51,19 +54,24 @@ def parse_kml(filename):
     return []
 
 
+def generate_html(path: str, out_file: str = "path.html") -> str:
+    """KML 파일을 읽어 HTML 지도를 생성하고 파일 경로를 반환합니다."""
+    coords: List[List[float]] = parse_kml(path)
+    if not coords:
+        raise ValueError(f"{path}에서 좌표를 찾을 수 없습니다")
+    html = HTML_TEMPLATE.format(coords=coords)
+    with open(out_file, "w", encoding="utf-8") as f:
+        f.write(html)
+    return out_file
+
+
 def main():
     if len(sys.argv) < 2:
         print('Usage: python show_kml_path.py path_to_file.kml')
         return
     path = sys.argv[1]
-    coords = parse_kml(path)
-    if not coords:
-        print('No coordinates found in', path)
-        return
-    html = HTML_TEMPLATE.format(coords=coords)
-    out_file = 'path.html'
-    with open(out_file, 'w', encoding='utf-8') as f:
-        f.write(html)
+    out_file = generate_html(path)
+    webbrowser.open(out_file)
     print('HTML 파일이 생성되었습니다:', out_file)
 
 if __name__ == '__main__':

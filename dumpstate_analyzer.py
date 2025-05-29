@@ -5,6 +5,46 @@ from typing import List, Dict
 
 def parse_fc_events(path: str) -> List[Dict[str, str]]:
     events = []
+
+    with open(path, 'r', encoding='utf-8', errors='ignore') as f:
+        capturing = False
+        package = None
+        timestamp = None
+        cause = None
+        event_lines = []
+        for line in f:
+            if 'beginning of crash' in line.lower():
+                capturing = True
+                package = None
+                timestamp = None
+                event_lines = [line.strip()]
+                continue
+            if capturing:
+                event_lines.append(line.strip())
+                if not timestamp:
+                    m = re.match(r'(\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+)', line)
+                    if m:
+                        timestamp = m.group(1)
+                if 'Cmdline:' in line:
+                    package = line.split('Cmdline:')[1].strip()
+                if 'Cause:' in line:
+                    cause = line.split('Cause:')[1].strip()
+                if line.strip() == '':
+                    events.append({
+                        'timestamp': timestamp or '',
+                        'package': package or '',
+                        'cause': cause or '',
+                        'details': '\n'.join(event_lines)
+                    })
+                    capturing = False
+        if capturing:
+            events.append({
+                'timestamp': timestamp or '',
+                'package': package or '',
+                'cause': cause or '',
+                'details': '\n'.join(event_lines)
+            })
+
     with open(path, "r", encoding="utf-8", errors="ignore") as f:
         capturing = False
         package = None
@@ -58,11 +98,28 @@ def parse_fc_events(path: str) -> List[Dict[str, str]]:
                     "details": "\n".join(event_lines),
                 }
             )
+
     return events
 
 
 def parse_anr_events(path: str) -> List[Dict[str, str]]:
     events = []
+
+    with open(path, 'r', encoding='utf-8', errors='ignore') as f:
+        for line in f:
+            if 'ServiceANR' in line:
+                m = re.match(r'(\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+)', line)
+                ts = m.group(1) if m else ''
+                pm = re.search(r'UFZ : ([\w\.]+)', line)
+                pkg = pm.group(1) if pm else ''
+                rm = re.search(r'reason:\s*(\S+)', line)
+                reason = rm.group(1) if rm else ''
+                events.append({'timestamp': ts, 'package': pkg, 'reason': reason, 'line': line.strip()})
+            elif 'exitType: ANR' in line:
+                m = re.match(r'(\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+)', line)
+                ts = m.group(1) if m else ''
+                events.append({'timestamp': ts, 'package': '', 'reason': '', 'line': line.strip()})
+
     with open(path, "r", encoding="utf-8", errors="ignore") as f:
         for line in f:
             if "ServiceANR" in line:
@@ -77,6 +134,7 @@ def parse_anr_events(path: str) -> List[Dict[str, str]]:
                 ts_match = re.match(r"(\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+)", line)
                 ts = ts_match.group(1) if ts_match else ""
                 events.append({"timestamp": ts, "package": "", "reason": "ANR", "line": line.strip()})
+
     return events
 
 
@@ -89,8 +147,13 @@ def main():
     if not fc_events:
         print('No F/C events found')
     for i, e in enumerate(fc_events, 1):
+
+        cause = f" Cause: {e['cause']}" if e.get('cause') else ''
+        print(f"[{i}] Time: {e['timestamp']} Package: {e['package']}{cause}")
+
         reason = f" Reason: {e['reason']}" if e.get('reason') else ''
         print(f"[{i}] Time: {e['timestamp']} Package: {e['package']}{reason}")
+
 
     print('\n=== ANR Events ===')
     if not anr_events:

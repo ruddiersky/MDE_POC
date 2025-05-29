@@ -4,26 +4,30 @@ import xml.etree.ElementTree as ET
 HTML_TEMPLATE = """<!DOCTYPE html>
 <html>
 <head>
-<meta charset='utf-8'>
-<title>KML Path</title>
-<link rel='stylesheet' href='https://unpkg.com/leaflet@1.7.1/dist/leaflet.css'>
-<script src='https://unpkg.com/leaflet@1.7.1/dist/leaflet.js'></script>
-<style>
-#map {{ height: 600px; }}
-</style>
+    <meta charset='utf-8'>
+    <title>KML Path</title>
+    <style>#map {{ height: 600px; }}</style>
+    <script src='https://maps.googleapis.com/maps/api/js?key=&callback=initMap' async defer></script>
+    <script>
+    var coords = {coords};
+    function initMap() {{
+        var path = coords.map(function(c) {{ return {{lat: c[0], lng: c[1]}}; }});
+        var map = new google.maps.Map(document.getElementById('map'), {{
+            zoom: 14,
+            center: path[0]
+        }});
+        var poly = new google.maps.Polyline({{
+            path: path,
+            strokeColor: '#FF0000',
+            strokeOpacity: 1.0,
+            strokeWeight: 2
+        }});
+        poly.setMap(map);
+    }}
+    </script>
 </head>
 <body>
 <div id='map'></div>
-<script>
-var coords = {coords};
-var map = L.map('map');
-map.fitBounds(coords);
-L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{
-    maxZoom: 19,
-    attribution: '&copy; OpenStreetMap contributors'
-}}).addTo(map);
-L.polyline(coords, {{color: 'red'}}).addTo(map);
-</script>
 </body>
 </html>"""
 
@@ -51,6 +55,13 @@ def parse_kml(filename):
     return []
 
 
+def generate_html(coords, out_file='path.html'):
+    html = HTML_TEMPLATE.format(coords=coords)
+    with open(out_file, 'w', encoding='utf-8') as f:
+        f.write(html)
+    return out_file
+
+
 def main():
     if len(sys.argv) < 2:
         print('Usage: python show_kml_path.py path_to_file.kml')
@@ -60,10 +71,7 @@ def main():
     if not coords:
         print('No coordinates found in', path)
         return
-    html = HTML_TEMPLATE.format(coords=coords)
-    out_file = 'path.html'
-    with open(out_file, 'w', encoding='utf-8') as f:
-        f.write(html)
+    out_file = generate_html(coords)
     print('HTML 파일이 생성되었습니다:', out_file)
 
 if __name__ == '__main__':

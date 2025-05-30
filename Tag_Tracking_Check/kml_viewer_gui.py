@@ -3,7 +3,7 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 from math import radians, cos, sin, asin, sqrt
 
-from .list_kml_positions import parse_kml
+from list_kml_positions import parse_kml
 
 # 거리 계산을 위한 haversine 함수 (단위: 미터)
 def haversine(lon1, lat1, lon2, lat2):

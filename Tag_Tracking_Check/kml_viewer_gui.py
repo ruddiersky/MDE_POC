@@ -22,12 +22,21 @@ def parse_path_txt(path):
         reader = csv.reader(f)
         next(reader, None)  # 헤더 건너뜀
         for row in reader:
-            if len(row) < 4:
+            # 최소 6개 컬럼(순서, 장소, 경도, 위도, 도착알림, 출발알림)이 있어야 함
+            if len(row) < 6:
                 continue
             place = row[1]
             lon = float(row[2])
             lat = float(row[3])
-            entries.append({"place": place, "lon": lon, "lat": lat})
+            arrive_alert = row[4].replace(".", ":").strip()
+            depart_alert = row[5].replace(".", ":").strip()
+            entries.append({
+                "place": place,
+                "lon": lon,
+                "lat": lat,
+                "arrive_alert": arrive_alert,
+                "depart_alert": depart_alert,
+            })
     return entries
 
 # KML 위치 정보를 장소 기준으로 그룹화
@@ -50,7 +59,7 @@ class RealRouteGUI(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Real Route Viewer")
-        self.geometry("1200x700")
+        self.geometry("1600x800")
         self._create_widgets()
 
     def _create_widgets(self):
@@ -76,11 +85,14 @@ class RealRouteGUI(tk.Tk):
         left_frame = ttk.Labelframe(body, text="history_real_route_summury")
         left_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
 
-        columns1 = ("place", "arrive", "depart")
+        columns1 = ("place", "arrive", "depart", "alert", "diff", "result")
         self.tree_summary = ttk.Treeview(left_frame, columns=columns1, show="headings")
         self.tree_summary.heading("place", text="장소")
         self.tree_summary.heading("arrive", text="도착시간")
         self.tree_summary.heading("depart", text="출발 시간")
+        self.tree_summary.heading("alert", text="도착알림 시간")
+        self.tree_summary.heading("diff", text="diff 도착-알림")
+        self.tree_summary.heading("result", text="결과_도착비교")
         self.tree_summary.pack(fill=tk.BOTH, expand=True)
 
         # 오른쪽 상세 테이블
@@ -139,12 +151,31 @@ class RealRouteGUI(tk.Tk):
             place = e["place"]
             rows = groups.get(place, [])
             if rows:
-                arrive = rows[0][0]
-                depart = rows[-1][0]
-                summary_rows.append((arrive, short_place(place), arrive.strftime("%H:%M:%S"), depart.strftime("%H:%M:%S")))
+                arrive_dt = rows[0][0]
+                depart_dt = rows[-1][0]
+                arrive_str = arrive_dt.strftime("%H:%M:%S")
+                depart_str = depart_dt.strftime("%H:%M:%S")
+                alert_str = e.get("arrive_alert", "")
+
+                diff_display = ""
+                result = ""
+                if alert_str and alert_str != "-":
+                    try:
+                        h, m = map(int, alert_str.split(":")[:2])
+                        alert_dt = arrive_dt.replace(hour=h, minute=m, second=0, microsecond=0)
+                        diff_min = (arrive_dt - alert_dt).total_seconds() / 60
+                        diff_display = f"{diff_min:.1f}"
+                        result = "Pass" if 0 <= diff_min <= 2 else "Fail"
+                    except ValueError:
+                        result = "Fail"
+                else:
+                    result = "Fail"
+
+                summary_rows.append((arrive_dt, short_place(place), arrive_str, depart_str, alert_str, diff_display, result))
+
         summary_rows.sort(key=lambda x: x[0])
-        for _, p, a, d in summary_rows:
-            self.tree_summary.insert("", tk.END, values=[p, a, d])
+        for _, p, a, d, alert, diff, res in summary_rows:
+            self.tree_summary.insert("", tk.END, values=[p, a, d, alert, diff, res])
 
 
 def main():

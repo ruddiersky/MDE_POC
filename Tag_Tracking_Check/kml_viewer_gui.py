@@ -96,6 +96,10 @@ class RealRouteGUI(tk.Tk):
         self.tree_summary.heading("result", text="결과_도착비교")
         self.tree_summary.pack(fill=tk.BOTH, expand=True)
 
+        # 결과 색상 표시용 태그
+        self.tree_summary.tag_configure("pass", background="#d8f6d8")  # light green
+        self.tree_summary.tag_configure("fail", background="#f6d8d8")  # light red
+
         # 상세 테이블 (아래쪽)
         bottom_frame = ttk.Labelframe(body, text="history_real_route")
         bottom_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
@@ -182,7 +186,8 @@ class RealRouteGUI(tk.Tk):
                     try:
                         h, m = map(int, alert_str.split(":")[:2])
                         alert_dt = arrive_dt.replace(hour=h, minute=m, second=0, microsecond=0)
-                        diff_min = (arrive_dt - alert_dt).total_seconds() / 60
+                        arrive_floor = arrive_dt.replace(second=0, microsecond=0)
+                        diff_min = (alert_dt - arrive_floor).total_seconds() / 60
 
                         diff_display = f"{diff_min:.1f}"
                         result = "Pass" if 0 <= diff_min <= 2 else "Fail"
@@ -195,7 +200,14 @@ class RealRouteGUI(tk.Tk):
 
         summary_rows.sort(key=lambda x: x[0])
         for _, full, short, a, d, alert, diff, res in summary_rows:
-            self.tree_summary.insert("", tk.END, iid=full, values=[short, a, d, alert, diff, res])
+            tag = "pass" if res == "Pass" else "fail"
+            self.tree_summary.insert(
+                "",
+                tk.END,
+                iid=full,
+                values=[short, a, d, alert, diff, res],
+                tags=(tag,),
+            )
 
 def main():
     app = RealRouteGUI()

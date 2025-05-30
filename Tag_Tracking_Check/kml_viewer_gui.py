@@ -163,7 +163,7 @@ class RealRouteGUI(tk.Tk):
                     try:
                         h, m = map(int, alert_str.split(":")[:2])
                         alert_dt = arrive_dt.replace(hour=h, minute=m, second=0, microsecond=0)
-                        diff_min = (arrive_dt - alert_dt).total_seconds() / 60
+                        diff_min = (alert_dt - arrive_dt).total_seconds() / 60
                         diff_display = f"{diff_min:.1f}"
                         result = "Pass" if 0 <= diff_min <= 2 else "Fail"
                     except ValueError:

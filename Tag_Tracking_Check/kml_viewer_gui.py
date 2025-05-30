@@ -87,6 +87,7 @@ class RealRouteGUI(tk.Tk):
 
         columns1 = ("place", "arrive", "depart", "alert", "diff", "result")
         self.tree_summary = ttk.Treeview(top_frame, columns=columns1, show="headings")
+
         self.tree_summary.heading("place", text="장소")
         self.tree_summary.heading("arrive", text="도착시간")
         self.tree_summary.heading("depart", text="출발 시간")
@@ -182,19 +183,19 @@ class RealRouteGUI(tk.Tk):
                         h, m = map(int, alert_str.split(":")[:2])
                         alert_dt = arrive_dt.replace(hour=h, minute=m, second=0, microsecond=0)
                         diff_min = (arrive_dt - alert_dt).total_seconds() / 60
+
                         diff_display = f"{diff_min:.1f}"
                         result = "Pass" if 0 <= diff_min <= 2 else "Fail"
                     except ValueError:
                         result = "Fail"
                 else:
                     result = "Fail"
-
+                    
                 summary_rows.append((arrive_dt, place, short_place(place), arrive_str, depart_str, alert_str, diff_display, result))
 
         summary_rows.sort(key=lambda x: x[0])
         for _, full, short, a, d, alert, diff, res in summary_rows:
             self.tree_summary.insert("", tk.END, iid=full, values=[short, a, d, alert, diff, res])
-
 
 def main():
     app = RealRouteGUI()

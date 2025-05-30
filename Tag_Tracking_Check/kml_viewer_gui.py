@@ -81,12 +81,13 @@ class RealRouteGUI(tk.Tk):
         body = ttk.Frame(self)
         body.pack(fill=tk.BOTH, expand=True)
 
-        # 왼쪽 요약 테이블
-        left_frame = ttk.Labelframe(body, text="history_real_route_summury")
-        left_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
+        # 요약 테이블 (위쪽)
+        top_frame = ttk.Labelframe(body, text="history_real_route_summury")
+        top_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
         columns1 = ("place", "arrive", "depart", "alert", "diff", "result")
-        self.tree_summary = ttk.Treeview(left_frame, columns=columns1, show="headings")
+        self.tree_summary = ttk.Treeview(top_frame, columns=columns1, show="headings")
+
         self.tree_summary.heading("place", text="장소")
         self.tree_summary.heading("arrive", text="도착시간")
         self.tree_summary.heading("depart", text="출발 시간")
@@ -95,17 +96,38 @@ class RealRouteGUI(tk.Tk):
         self.tree_summary.heading("result", text="결과_도착비교")
         self.tree_summary.pack(fill=tk.BOTH, expand=True)
 
-        # 오른쪽 상세 테이블
-        right_frame = ttk.Labelframe(body, text="history_real_route")
-        right_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
+        # 상세 테이블 (아래쪽)
+        bottom_frame = ttk.Labelframe(body, text="history_real_route")
+        bottom_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
         columns2 = ("place", "time", "lat", "lon")
-        self.tree_detail = ttk.Treeview(right_frame, columns=columns2, show="headings")
+        self.tree_detail = ttk.Treeview(bottom_frame, columns=columns2, show="headings")
         self.tree_detail.heading("place", text="장소")
         self.tree_detail.heading("time", text="시간")
         self.tree_detail.heading("lat", text="위도")
         self.tree_detail.heading("lon", text="경도")
         self.tree_detail.pack(fill=tk.BOTH, expand=True)
+
+        self.tree_summary.bind("<<TreeviewSelect>>", self.on_summary_select)
+
+    def on_summary_select(self, event):
+        selected = self.tree_summary.focus()
+        if not selected:
+            return
+        rows = self.groups.get(selected, []) if hasattr(self, "groups") else []
+        for item in self.tree_detail.get_children():
+            self.tree_detail.delete(item)
+        for dt, lat, lon in rows:
+            self.tree_detail.insert(
+                "",
+                tk.END,
+                values=[
+                    short_place(selected),
+                    dt.strftime("%H:%M:%S"),
+                    f"{lat:.6f}",
+                    f"{lon:.6f}",
+                ],
+            )
 
     def select_txt(self):
         path = filedialog.askopenfilename(filetypes=[("Text", "*.txt")])
@@ -132,18 +154,15 @@ class RealRouteGUI(tk.Tk):
             return
 
         groups = group_positions(entries, kml_positions)
+        self.entries = entries
+        self.groups = groups
 
         for item in self.tree_summary.get_children():
             self.tree_summary.delete(item)
         for item in self.tree_detail.get_children():
             self.tree_detail.delete(item)
 
-        # 상세 정보 출력
-        for e in entries:
-            place = e["place"]
-            rows = groups.get(place, [])
-            for dt, lat, lon in rows:
-                self.tree_detail.insert("", tk.END, values=[short_place(place), dt.strftime("%H:%M:%S"), f"{lat:.6f}", f"{lon:.6f}"])
+        # 상세 정보는 요약 선택 시 표시하므로 초기에는 출력하지 않음
 
         # 요약 정보 출력
         summary_rows = []
@@ -163,20 +182,20 @@ class RealRouteGUI(tk.Tk):
                     try:
                         h, m = map(int, alert_str.split(":")[:2])
                         alert_dt = arrive_dt.replace(hour=h, minute=m, second=0, microsecond=0)
-                        diff_min = (alert_dt - arrive_dt).total_seconds() / 60
+                        diff_min = (arrive_dt - alert_dt).total_seconds() / 60
+
                         diff_display = f"{diff_min:.1f}"
                         result = "Pass" if 0 <= diff_min <= 2 else "Fail"
                     except ValueError:
                         result = "Fail"
                 else:
                     result = "Fail"
-
-                summary_rows.append((arrive_dt, short_place(place), arrive_str, depart_str, alert_str, diff_display, result))
+                    
+                summary_rows.append((arrive_dt, place, short_place(place), arrive_str, depart_str, alert_str, diff_display, result))
 
         summary_rows.sort(key=lambda x: x[0])
-        for _, p, a, d, alert, diff, res in summary_rows:
-            self.tree_summary.insert("", tk.END, values=[p, a, d, alert, diff, res])
-
+        for _, full, short, a, d, alert, diff, res in summary_rows:
+            self.tree_summary.insert("", tk.END, iid=full, values=[short, a, d, alert, diff, res])
 
 def main():
     app = RealRouteGUI()

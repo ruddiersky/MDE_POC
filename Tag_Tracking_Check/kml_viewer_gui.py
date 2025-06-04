@@ -184,7 +184,7 @@ class RealRouteGUI(tk.Tk):
                 result = ""
                 if alert_str and alert_str != "-":
                     try:
-                        h, m = map(int, alert_str.split(":")[:2])
+                        h, m = map(int, alert_str.split(":")[:4])
                         alert_dt = arrive_dt.replace(hour=h, minute=m, second=0, microsecond=0)
                         arrive_floor = arrive_dt.replace(second=0, microsecond=0)
                         diff_min = (alert_dt - arrive_floor).total_seconds() / 60
